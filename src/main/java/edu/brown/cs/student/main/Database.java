@@ -1,6 +1,10 @@
 package edu.brown.cs.student.main;
 
 import java.sql.Connection;
+import java.sql.DriverManager;
+import java.sql.SQLException;
+import java.sql.ResultSet;
+import java.sql.Statement;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
@@ -34,6 +38,38 @@ public class Database {
      * TODO: Initialize the database connection, turn foreign keys on,
      *  and then create the word and corpus tables if they do not exist.
      */
+
+    Class.forName("org.sqlite.JDBC");
+    String urlToDB = "jdbc:sqlite:" + "/Users/yukihayashita/Desktop/cs32/lab-databases/data/data.sqlite3";
+    conn = DriverManager.getConnection(urlToDB);
+    Statement stat = conn.createStatement();
+    stat.executeUpdate("PRAGMA foreign_keys=ON;");
+
+
+    PreparedStatement prep;
+            prep = conn.prepareStatement("CREATE TABLE IF NOT EXISTS corpus"
+            + "(id INTEGER PRIMARY KEY AUTOINCREMENT,"
+            + "filename TEXT);");
+            prep.execute();
+            prep.close();
+
+            prep = conn.prepareStatement("CREATE TABLE IF NOT EXISTS word"
+            + "(corpus_id INTEGER,"
+            + "word TEXT,"
+            + "PRIMARY KEY (corpus_id),"
+            + "FOREIGN KEY (corpus_id)"
+            + "REFERENCES corpus (id) ON DELETE CASCADE);");
+            prep.execute();
+            prep.close();
+
+            prep = conn.prepareStatement(
+                    "INSERT INTO corpus (filename) VALUES (?);");
+            prep.setString(1, "Software Engineering");
+            prep.addBatch();
+            prep.executeBatch();
+            prep.close();
+
+
   }
 
 
@@ -118,8 +154,12 @@ public class Database {
   Map<String, Integer> getFrequencyMap() throws SQLException {
     Map<String, Integer> freqMap = new HashMap<>();
     //TODO: select all filenames and how many words are associated with those filenames from the database
-    PreparedStatement prep = conn.prepareStatement(""); //Your SQL here!
+    PreparedStatement prep = conn.prepareStatement(
+            //"SELECT corpus.filename from corpus JOIN word.word from word ON word.corpus_id = corpus.id, ;"); //Your SQL here!
+            "SELECT corpus.filename, COUNT (*) FROM corpus JOIN word ON word.corpus_id = corpus.id GROUP BY corpus.id;");
+    //prep.setString(1, filename);
     ResultSet rs = prep.executeQuery();
+
     while (rs.next()) {
       freqMap.put(rs.getString(1), rs.getInt(2));
     }
@@ -140,7 +180,8 @@ public class Database {
   Map<String, Integer> getInstanceMap() throws SQLException {
     Map<String, Integer> instMap = new HashMap<>();
     //TODO: select the five most common words from the entire database, and how many times they appear
-    PreparedStatement prep = conn.prepareStatement(""); //Your SQL Here!
+    PreparedStatement prep = conn.prepareStatement(
+            "SELECT word, COUNT(*) FROM word GROUP BY word ORDER BY COUNT(*) DESC LIMIT 5;"); //Your SQL Here!
     ResultSet rs = prep.executeQuery();
     while (rs.next()) {
       instMap.put(rs.getString(1), rs.getInt(2));
@@ -149,6 +190,7 @@ public class Database {
     prep.close();
     rs.close();
     return instMap;
+
   }
 
   /**
